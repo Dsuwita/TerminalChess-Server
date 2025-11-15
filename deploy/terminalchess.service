@@ -1,0 +1,16 @@
+[Unit]
+Description=Terminal Chess Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/terminalchess
+ExecStart=/usr/bin/java -jar /opt/terminalchess/server-0.1.0.jar
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

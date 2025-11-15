@@ -1,0 +1,51 @@
+# Terminal Chess server - System requirements
+
+This file lists the minimal system dependencies and quick install/verify steps for the Java server so contributors can bootstrap the project quickly.
+
+Required:
+- Java JDK 17 or newer (OpenJDK 17 recommended)
+- Apache Maven 3.6+
+
+Recommended OS:
+- Ubuntu 22.04 / 24.04 or Debian-based distributions
+
+Quick install (Debian/Ubuntu):
+
+```bash
+sudo apt update
+sudo apt install -y openjdk-17-jdk maven
+```
+
+Verify installation:
+
+```bash
+java -version
+mvn -v
+```
+
+Optional: Use SDKMAN to manage JDK/Maven versions:
+
+```bash
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+# install Java 17 and Maven via sdkman
+sdk install java 17.0.16-open
+sdk install maven
+```
+
+Build the server jar:
+
+```bash
+cd server
+mvn -DskipTests package
+```
+
+Run the server (default port 5000):
+
+```bash
+java -jar target/server-0.1.0.jar 5000
+```
+
+Notes:
+- The server uses a simple text protocol documented in `server/README.md`.
+- This file documents system-level requirements only; Java library dependencies are managed by Maven (`pom.xml`).
