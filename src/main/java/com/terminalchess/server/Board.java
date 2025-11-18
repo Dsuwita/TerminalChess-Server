@@ -52,6 +52,11 @@ public class Board {
         public static MoveResult error(String msg) { return new MoveResult(false, msg, false); }
     }
 
+    public Piece getPiece(int rank, int file) {
+        if (!inBounds(file, rank)) return null;
+        return b[rank][file];
+    }
+
     private static int fileToX(char f) {
         return f - 'a';
     }
@@ -114,6 +119,44 @@ public class Board {
 
         if (kingCaptured) return MoveResult.okKingCaptured();
         return MoveResult.ok();
+    }
+
+    /**
+     * Test if a move is legal without actually making it.
+     * Used by AI to find valid moves.
+     */
+    public synchronized boolean isLegalMove(String move, com.terminalchess.server.Match.Color player) {
+        if (move == null || move.length() < 4) return false;
+        move = move.toLowerCase(Locale.ROOT).trim();
+        int sx = fileToX(move.charAt(0));
+        int sy = rankToY(move.charAt(1));
+        int dx = fileToX(move.charAt(2));
+        int dy = rankToY(move.charAt(3));
+        if (!inBounds(sx, sy) || !inBounds(dx, dy)) return false;
+        Piece src = b[sy][sx];
+        if (src == null) return false;
+        Color col = (player == com.terminalchess.server.Match.Color.WHITE) ? Color.WHITE : Color.BLACK;
+        if (src.color != col) return false;
+
+        Piece dst = b[dy][dx];
+        if (dst != null && dst.color == src.color) return false;
+
+        // basic movement rules
+        switch (src.type) {
+            case P:
+                return pawnMove(sx, sy, dx, dy, src.color);
+            case N:
+                return knightMove(sx, sy, dx, dy);
+            case B:
+                return slidingMove(sx, sy, dx, dy, 1, 1);
+            case R:
+                return slidingMove(sx, sy, dx, dy, 1, 0);
+            case Q:
+                return slidingMove(sx, sy, dx, dy, 1, 0) || slidingMove(sx, sy, dx, dy, 1, 1);
+            case K:
+                return kingMove(sx, sy, dx, dy);
+        }
+        return false;
     }
 
     private boolean inBounds(int x, int y) {

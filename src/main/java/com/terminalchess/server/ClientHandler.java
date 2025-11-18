@@ -64,10 +64,14 @@ public class ClientHandler implements Runnable {
                     line = line.trim();
                     if (line.isEmpty()) continue;
                     if (line.equalsIgnoreCase("FIND")) {
-                        server.registerWaiting(this);
-                        out.println("WAITING");
-                        continue;
-                    }
+                    server.registerWaiting(this);
+                    out.println("WAITING");
+                    continue;
+                }
+                if (line.equalsIgnoreCase("COMPUTER")) {
+                    server.startComputerMatch(this);
+                    continue;
+                }
                     if (line.toUpperCase().startsWith("CANCEL")) {
                     String[] parts = line.split("\\s+", 2);
                     if (parts.length == 1) {

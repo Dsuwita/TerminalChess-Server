@@ -54,9 +54,23 @@ public class ChessServer {
         matches.values().forEach(Match::abort);
     }
 
-    public void registerWaiting(ClientHandler handler) {
+    public synchronized void registerWaiting(ClientHandler handler) {
+        if (waiting.contains(handler)) return;
         waiting.add(handler);
         tryPairing();
+    }
+
+    public synchronized void startComputerMatch(ClientHandler player) {
+        if (matches.size() >= MAX_ACTIVE_MATCHES) {
+            player.send("ERROR server at capacity");
+            return;
+        }
+        // Create match with computer as black
+        int id = matchIdGen.getAndIncrement();
+        Match m = new Match(id, player, null, this, true);
+        matches.put(id, m);
+        player.setMatch(m);
+        m.start();
     }
 
     public void removeFromWaiting(ClientHandler handler) {

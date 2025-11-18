@@ -14,19 +14,31 @@ public class Match {
     private volatile boolean active = true;
     private final List<String> moveHistory = new CopyOnWriteArrayList<>();
     private int moveNumber = 1;
+    private final boolean blackIsComputer;
+    private final ComputerAgent computerAgent;
 
     public Match(int id, ClientHandler a, ClientHandler b, ChessServer server) {
+        this(id, a, b, server, false);
+    }
+
+    public Match(int id, ClientHandler a, ClientHandler b, ChessServer server, boolean blackIsComputer) {
         this.id = id;
         this.server = server;
-        // assign colors: a -> white, b -> black
+        this.blackIsComputer = blackIsComputer;
+        this.computerAgent = blackIsComputer ? new ComputerAgent() : null;
+        // assign colors: a -> white, b -> black (or computer)
         this.white = a;
         this.black = b;
     }
 
     public void start() {
         try {
-            white.send("START WHITE " + black.getName());
-            black.send("START BLACK " + white.getName());
+            if (blackIsComputer) {
+                white.send("START WHITE Computer");
+            } else {
+                white.send("START WHITE " + black.getName());
+                black.send("START BLACK " + white.getName());
+            }
             sendBoardToBoth();
             promptTurn();
         } catch (Exception e) {
@@ -38,13 +50,74 @@ public class Match {
         String ascii = board.toAscii();
         white.send("BOARD");
         for (String line : ascii.split("\n")) white.send(line);
-        black.send("BOARD");
-        for (String line : ascii.split("\n")) black.send(line);
+        if (!blackIsComputer && black != null) {
+            black.send("BOARD");
+            for (String line : ascii.split("\n")) black.send(line);
+        }
     }
 
     private void promptTurn() {
         if (!active) return;
-        if (turn == Color.WHITE) white.send("YOURMOVE"); else black.send("YOURMOVE");
+        if (turn == Color.WHITE) {
+            white.send("YOURMOVE");
+        } else {
+            if (blackIsComputer) {
+                // Computer's turn - make move after small delay
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(500); // Small delay for realism
+                        makeComputerMove();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }).start();
+            } else {
+                black.send("YOURMOVE");
+            }
+        }
+    }
+
+    private void makeComputerMove() {
+        if (!active || !blackIsComputer || turn != Color.BLACK) return;
+        
+        String move = computerAgent.generateMove(board, Color.BLACK);
+        if (move == null) {
+            // No legal moves - computer loses
+            white.send("END WIN");
+            if (black != null) black.send("END LOSS");
+            active = false;
+            sendMovesToBoth();
+            server.endMatch(id);
+            return;
+        }
+        
+        Board.MoveResult res = board.applyMove(move, Color.BLACK);
+        if (!res.ok) {
+            // Should not happen if AI is working correctly
+            System.err.println("Computer made illegal move: " + move);
+            return;
+        }
+        
+        // Record move
+        moveHistory.add(moveNumber + "... " + move.toLowerCase(Locale.ROOT));
+        moveNumber++;
+        
+        // Notify player
+        white.send("OPPONENT_MOVE " + move.toLowerCase(Locale.ROOT));
+        sendBoardToBoth();
+        
+        if (res.kingCaptured) {
+            white.send("END LOSS");
+            if (black != null) black.send("END WIN");
+            active = false;
+            sendMovesToBoth();
+            server.endMatch(id);
+            return;
+        }
+        
+        // Switch turn back to white
+        turn = Color.WHITE;
+        promptTurn();
     }
 
     public synchronized void onMove(ClientHandler from, String move) {
