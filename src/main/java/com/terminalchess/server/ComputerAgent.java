@@ -12,8 +12,22 @@ public class ComputerAgent {
     
     public ComputerAgent() {
         try {
-            // Try to start Stockfish process
-            stockfishProcess = new ProcessBuilder("stockfish").start();
+            // Try to start Stockfish process - try common paths
+            String[] stockfishPaths = {"stockfish", "/usr/games/stockfish", "/usr/bin/stockfish"};
+            IOException lastError = null;
+            
+            for (String path : stockfishPaths) {
+                try {
+                    stockfishProcess = new ProcessBuilder(path).start();
+                    break; // Success!
+                } catch (IOException e) {
+                    lastError = e;
+                }
+            }
+            
+            if (stockfishProcess == null) {
+                throw lastError;
+            }
             reader = new BufferedReader(new InputStreamReader(stockfishProcess.getInputStream()));
             writer = new BufferedWriter(new OutputStreamWriter(stockfishProcess.getOutputStream()));
             
